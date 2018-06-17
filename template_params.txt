@@ -1,0 +1,3 @@
+--stack-name open-taxi-sls
+--parameter-overrides
+IOTHostName=a1hkcuoy1ihzp9.iot.eu-west-1.amazonaws.com
