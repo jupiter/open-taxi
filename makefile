@@ -13,6 +13,7 @@ clean:
 	rm -rf build
 build:
 	cp -R src build
+	cp -R certs build/certs
 	pip install -r requirements.txt --target=./build
 package:
 	aws cloudformation package --template-file ./template.yaml --s3-bucket deploymentbucket-emxyh72p1x99 --output-template-file template_packaged.yaml
