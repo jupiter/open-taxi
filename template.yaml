@@ -3,3 +3,229 @@ Transform: "AWS::Serverless-2016-10-31"
 Parameters:
   IOTHostName:
     Type: String
+
+Resources:
+  DriversRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          -
+            Effect: Allow
+            Principal:
+              AWS:
+                - !Ref AWS::AccountId
+            Action:
+              sts:AssumeRole
+      Path: /
+      Policies:
+        -
+          PolicyName: OTDriversPolicy
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              -
+                Effect: Allow
+                Action: iot:Publish
+                Resource:
+                  - arn:aws:iot:*:*:topic/ot/drivers/broadcast
+              -
+                Effect: Allow
+                Action: iot:Subscribe
+                Resource:
+                  - arn:aws:iot:*:*:topicfilter/ot/riders/searching/*
+
+  RidersRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          -
+            Effect: "Allow"
+            Principal:
+              AWS:
+                - !Ref AWS::AccountId
+            Action:
+              sts:AssumeRole
+      Path: /
+      Policies:
+        -
+          PolicyName: OTRidersPolicy
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              -
+                Effect: Allow
+                Action: iot:Publish
+                Resource:
+                  - arn:aws:iot:*:*:topic/ot/riders/broadcast
+              -
+                Effect: Allow
+                Action: iot:Subscribe
+                Resource:
+                  - arn:aws:iot:*:*:topicfilter/ot/drivers/available/*
+
+  PublishDriversAvailableRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          -
+            Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              sts:AssumeRole
+      Path: /
+
+  PublishRidersSearchingRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          -
+            Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              sts:AssumeRole
+      Path: /
+
+  AllUsersPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: OTAllUsersPolicy
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          -
+            Sid: 'OpenConnectStatement'
+            Effect: Allow
+            Action: iot:Connect
+            Resource: '*'
+          -
+            Sid: 'SubscribeToAnyReplyTopicsStatement'
+            Effect: Allow
+            Action: iot:Subscribe
+            Resource: arn:aws:iot:*:*:topicfilter/ot/replies/*
+          -
+            Effect: Allow
+            Action:
+              - iot:Publish
+              - iot:Receive
+            Resource:
+              - arn:aws:iot:*:*:topic/ot/replies/*
+      Roles:
+        - !Ref DriversRole
+        - !Ref RidersRole
+        - !Ref PublishDriversAvailableRole
+        - !Ref PublishRidersSearchingRole
+
+  AllFunctionsPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: OTAllFunctionsPolicy
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          -
+            Effect: Allow
+            Action: logs:CreateLogGroup
+            Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:*"
+          -
+            Effect: Allow
+            Action: logs:CreateLogStream
+            Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/*:*"
+          -
+            Effect: Allow
+            Action: logs:PutLogEvents
+            Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/*:*:*"
+          -
+            Effect: Allow
+            Action: iot:Publish
+            Resource: '*'
+      Roles:
+        - !Ref PublishDriversAvailableRole
+        - !Ref PublishRidersSearchingRole
+
+  PublishDriversAvailableFn:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: build/
+      FunctionName: "OTPublishDriversAvailable"
+      Handler: drivers_available.handler
+      Runtime: python3.6
+      Role: !GetAtt PublishDriversAvailableRole.Arn
+      Environment:
+        Variables:
+          OT_IOT_HOST: !Ref IOTHostName
+
+  PublishRidersSearchingFn:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: build/
+      FunctionName: "OTPublishRidersSearching"
+      Handler: riders_searching.handler
+      Runtime: python3.6
+      Role: !GetAtt PublishRidersSearchingRole.Arn
+      Environment:
+        Variables:
+          OT_IOT_HOST: !Ref IOTHostName
+
+  DriversAvailableRule:
+    Type: AWS::IoT::TopicRule
+    Properties:
+      RuleName: OTDriversAvailableRule
+      TopicRulePayload:
+        RuleDisabled: false
+        AwsIotSqlVersion: 2016-03-23
+        Sql: >-
+          SELECT *, clientid() as auth_client_id FROM 'ot/drivers/broadcast' WHERE status='available'
+        Actions:
+          -
+            Lambda:
+              FunctionArn: !GetAtt PublishDriversAvailableFn.Arn
+
+  RidersSearchingRule:
+    Type: AWS::IoT::TopicRule
+    Properties:
+      RuleName: OTRidersSearchingRule
+      TopicRulePayload:
+        RuleDisabled: false
+        AwsIotSqlVersion: 2016-03-23
+        Sql: >-
+          SELECT *, clientid() as auth_client_id FROM 'ot/riders/broadcast' WHERE status='searching'
+        Actions:
+          -
+            Lambda:
+              FunctionArn: !GetAtt PublishRidersSearchingFn.Arn
+
+  DriversAvailablePublishInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt PublishDriversAvailableFn.Arn
+      Action: lambda:InvokeFunction
+      Principal: iot.amazonaws.com
+      SourceAccount: !Ref AWS::AccountId
+      SourceArn: !GetAtt DriversAvailableRule.Arn
+
+  RidersSearchingPublishInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt PublishRidersSearchingFn.Arn
+      Action: lambda:InvokeFunction
+      Principal: iot.amazonaws.com
+      SourceAccount: !Ref AWS::AccountId
+      SourceArn: !GetAtt RidersSearchingRule.Arn
+
+Outputs:
+  DriversRoleArn:
+    Value: !GetAtt DriversRole.Arn
+  RidersRoleArn:
+    Value: !GetAtt RidersRole.Arn
