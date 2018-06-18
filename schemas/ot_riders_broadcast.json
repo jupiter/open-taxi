@@ -1,0 +1,44 @@
+{
+  "type": "object",
+  "properties": {
+    "reply_topic": {
+      "type": "string",
+      "required": true
+    },
+    "device_time": {
+      "type": "string",
+      "format": "date-time",
+      "required": true
+    },
+    "status": {
+      "type": "string",
+      "required": true
+    },
+    "age_secs": {
+      "type": "integer",
+      "minimum": 0,
+      "required": true
+    },
+    "lat_lng": {
+      "type": "array",
+      "items": [
+        {
+          "type": "number",
+          "minimum": -90,
+          "maximum": 90,
+          "required": true
+        },
+        {
+          "type": "number",
+          "minimum": -180,
+          "maximum": 180,
+          "required": true
+        }
+      ],
+      "additionalItems": false,
+      "required": true,
+      "minItems": 2,
+      "maxItems": 2
+    }
+  }
+}
