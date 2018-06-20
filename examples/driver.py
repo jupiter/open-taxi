@@ -2,13 +2,15 @@ import time
 from datetime import datetime
 import json
 import client
-from search import update_subscriptions
+from search import update_subscriptions, print_updated_locations
 
 
 def custom_callback(_client, _userdata, message):
     payload = json.loads(message.payload)
     if payload.get('type') == 'riders_in_range':
         update_subscriptions(mqtt, payload, custom_callback)
+    elif 'ot/riders/searching' in message.topic:
+        print_updated_locations(payload)
     else:
         print("--------------")
         print(message.topic, ':')
@@ -40,17 +42,18 @@ path = [
 path_iterator = iter(path)
 
 while True:
+    ll = next(path_iterator, path[-1])
     broadcast_message = {
         'reply_topic': reply_topic,
         'device_time': datetime.now().__str__(),
         'status': 'available',
         'age_secs': (datetime.now() - start_time).seconds,
         'range_meters': 1500,
-        'lat_lng': next(path_iterator, path[5])
+        'lat_lng': ll
     }
     broadcast_topic = 'ot/drivers/broadcast'
     mqtt.publish(broadcast_topic, json.dumps(broadcast_message), 1)
-    print('published to', broadcast_topic)
-    time.sleep(30)
+    print('published', ll, 'to', broadcast_topic)
+    time.sleep(15)
 
 # mqtt.disconnect()
