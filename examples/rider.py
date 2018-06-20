@@ -2,13 +2,18 @@ import time
 from datetime import datetime
 import json
 import client
+from search import update_subscriptions
 
 
-def custom_callback(client, userdata, message):
-    print("--------------")
-    print(message.topic, ':')
-    print(json.loads(message.payload))
-    print("--------------")
+def custom_callback(_client, _userdata, message):
+    payload = json.loads(message.payload)
+    if payload.get('type') == 'riders_in_range':
+        update_subscriptions(mqtt, payload, custom_callback)
+    else:
+        print("--------------")
+        print(message.topic, ':')
+        print(payload)
+        print("--------------")
 
 client_id = 'example-rider'
 reply_topic = f'ot/replies/{client_id}'
@@ -29,6 +34,7 @@ while True:
         'device_time': datetime.now().__str__(),
         'status': 'searching',
         'age_secs': (datetime.now() - start_time).seconds,
+        'range_meters': 1500,
         'lat_lng': [51.507351, -0.127758]
     }
     broadcast_topic = 'ot/riders/broadcast'

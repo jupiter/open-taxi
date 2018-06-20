@@ -29,7 +29,9 @@ def handler(event, context):
     for cellid in search_cellids:
         tokens = geo.get_hierarchy_as_tokens(cellid, placeholder=None)
         subtopics = '/'.join(map(str, tokens))
-        search_topics.append(f'ot/riders/searching/{subtopics}/#')
+        wildcard = '/#' if len(tokens) < 4 else ''
+        search_topics.append(f'ot/riders/searching/{subtopics}{wildcard}')
+    search_topics.sort(key=len)
 
     reply_topic = event['reply_topic']
     reply_message = {
@@ -50,6 +52,7 @@ def handler(event, context):
     )
     broadcast_message = copy.deepcopy(event)
     del broadcast_message['auth_client_id']
+    del broadcast_message['range_meters']
     broadcast_tokens = geo.get_hierarchy_as_tokens(broadcast_cellid)
     broadcast_subtopics = '/'.join(map(str, broadcast_tokens))
     broadcast_topic = f'ot/drivers/available/{broadcast_subtopics}'

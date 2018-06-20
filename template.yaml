@@ -35,6 +35,11 @@ Resources:
                 Action: iot:Subscribe
                 Resource:
                   - arn:aws:iot:*:*:topicfilter/ot/riders/searching/*
+              -
+                Effect: Allow
+                Action: iot:Receive
+                Resource:
+                  - arn:aws:iot:*:*:topic/ot/riders/searching/*
 
   RidersRole:
     Type: AWS::IAM::Role
@@ -66,6 +71,11 @@ Resources:
                 Action: iot:Subscribe
                 Resource:
                   - arn:aws:iot:*:*:topicfilter/ot/drivers/available/*
+              -
+                Effect: Allow
+                Action: iot:Receive
+                Resource:
+                  - arn:aws:iot:*:*:topic/ot/drivers/available/*
 
   PublishDriversAvailableRole:
     Type: AWS::IAM::Role

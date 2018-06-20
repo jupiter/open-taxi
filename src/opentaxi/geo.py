@@ -32,9 +32,9 @@ def get_cellids_in_range(latitude, longitude, range_in_meters, min_level, max_le
 
 def get_hierarchy_as_tokens(cellid, min_level=10, max_level=16, level_mod=2, placeholder='x'):
     tokens = []
-    expected_mod = min_level % level_mod
+    expected_rem = min_level % level_mod
     for x in range(min_level, max_level + 1):
-        if not expected_mod == x % level_mod:
+        if not expected_rem == x % level_mod:
             continue
         if cellid.level() < x:
             if placeholder != None:
