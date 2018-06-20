@@ -24,17 +24,12 @@ def get_credentials_for_role(role_name, client_id):
                 merged_policy_document['Statement'].append(statement)
 
     restricted_connect_by_client_id = False
-    restricted_subscribe_reply_topic = False
     for statement in merged_policy_document['Statement']:
         if statement.get('Sid') == 'OpenConnectStatement':
             statement['Resource'] = f'arn:aws:iot:*:{account_id}:client/{client_id}'
             restricted_connect_by_client_id = True
-        elif statement.get('Sid') == 'SubscribeToAnyReplyTopicsStatement':
-            statement['Resource'] = f'arn:aws:iot:*:*:topicfilter/ot/replies/{client_id}'
-            restricted_subscribe_reply_topic = True
 
     assert restricted_connect_by_client_id
-    assert restricted_subscribe_reply_topic
 
     merged_policy_json = json.dumps(merged_policy_document, indent=2)
 
