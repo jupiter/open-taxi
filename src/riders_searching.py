@@ -4,18 +4,17 @@ import json
 from opentaxi import iot, geo, validate
 
 
-validator = validate.get_validator('./schemas/ot_riders_broadcast.json')
+validator = validate.get_validator('./schemas/ot_location_broadcast.json')
 
 
 def handler(event, context):
     if not validate.is_valid_message(validator, event):
         return {} # Discard event
 
-    print(event)
     client = iot.get_client()
 
     # Send search topics to rider
-    search_range_meters = 1500
+    search_range_meters = event['range_meters']
     search_levels = [12, 16]
     search_max_cells = 20
     search_cellids = geo.get_cellids_in_range(
@@ -35,9 +34,10 @@ def handler(event, context):
     reply_topic = event['reply_topic']
     reply_message = {
         'type': 'drivers_in_range',
-        'lat_lng': event['lat_lng'],
+        'device_time': event['device_time'],
         'range_meters': search_range_meters,
-        'search_topics': search_topics
+        'lat_lng': event['lat_lng'],
+        'topics': search_topics
     }
     client.publish(reply_topic, json.dumps(reply_message), 1)
 

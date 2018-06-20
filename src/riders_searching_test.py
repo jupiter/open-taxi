@@ -5,6 +5,7 @@ from unittest.mock import patch, Mock
 
 from .riders_searching import handler
 import opentaxi.iot
+from opentaxi.validate import get_validator, is_valid_message
 
 
 class RidersSearchingHandlerTests(unittest.TestCase):
@@ -20,6 +21,7 @@ class RidersSearchingHandlerTests(unittest.TestCase):
             'device_time': datetime.datetime.now().__str__(),
             'status': 'searching',
             'age_secs': 0,
+            'range_meters': 1500,
             'lat_lng': [51.507351, -0.127758]
         }
         context = {}
@@ -29,17 +31,22 @@ class RidersSearchingHandlerTests(unittest.TestCase):
         self.assertTrue(get_client_patch.called)
         self.assertEqual(mock_client.publish.call_count, 5)
         self.assertEqual(mock_client.publish.call_args_list[0][0][0], 'ot/replies/abc123')
+
         reply_message = json.loads(mock_client.publish.call_args_list[0][0][1])
-        search_topics_len = len(reply_message.get('search_topics', []))
+        range_reply_validator = get_validator('./schemas/ot_reply_range.json')
+        self.assertTrue(is_valid_message(range_reply_validator, reply_message))
+
+        search_topics_len = len(reply_message.get('topics', []))
         self.assertTrue(search_topics_len > 0)
         self.assertTrue(search_topics_len <= 21)
-        self.assertEqual(reply_message['search_topics'][0], 'ot/drivers/available/487605/487604b/#')
+        self.assertEqual(reply_message['topics'][0], 'ot/drivers/available/487605/487604b/#')
 
-        del reply_message['search_topics']
+        del reply_message['topics']
         self.assertEqual(reply_message, {
             'type': 'drivers_in_range',
-            'lat_lng': [51.507351, -0.127758],
-            'range_meters': 1500
+            'device_time': event['device_time'],
+            'range_meters': 1500,
+            'lat_lng': [51.507351, -0.127758]
         })
         self.assertEqual(mock_client.publish.call_args_list[1][0][0], 'ot/riders/searching/487605/487604d/487604cf/487604ce3')
         broadcast_message = json.loads(mock_client.publish.call_args_list[1][0][1])

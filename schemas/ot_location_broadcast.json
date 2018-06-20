@@ -19,6 +19,12 @@
       "minimum": 0,
       "required": true
     },
+    "range_meters": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 1500,
+      "required": true
+    },
     "lat_lng": {
       "type": "array",
       "items": [

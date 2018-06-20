@@ -1,0 +1,29 @@
+{
+  "type": "object",
+  "properties": {
+    "type": {
+      "type": "string",
+      "enum": ["drivers_in_range", "riders_in_range"]
+    },
+    "device_time": {
+      "type": "string",
+      "format": "date-time",
+      "required": true
+    },
+    "range_meters": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 1500,
+      "required": true
+    },
+    "topics": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "required": true
+      },
+      "required": true,
+      "minItems": 1
+    }
+  }
+}
