@@ -115,14 +115,13 @@ Resources:
         Version: 2012-10-17
         Statement:
           -
-            Sid: 'OpenConnectStatement'
             Effect: Allow
             Action: iot:Connect
-            Resource: '*'
+            Resource: 'arn:aws:iot:*:*:client/${aws:userid}'
           -
             Effect: Allow
             Action: iot:Subscribe
-            Resource: 'arn:aws:iot:*:*:topicfilter/ot/replies/${iot:ClientId}'
+            Resource: 'arn:aws:iot:*:*:topicfilter/ot/replies/${aws:userid}'
           -
             Effect: Allow
             Action:
@@ -155,6 +154,10 @@ Resources:
             Effect: Allow
             Action: logs:PutLogEvents
             Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/*:*:*"
+          -
+            Effect: Allow
+            Action: iot:Connect
+            Resource: '*'
           -
             Effect: Allow
             Action: iot:Publish

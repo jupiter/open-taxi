@@ -17,16 +17,17 @@ def custom_callback(_client, _userdata, message):
         print(payload)
         print("--------------")
 
-client_id = 'example-driver'
+role_name = 'open-taxi-sls-DriversRole-1S0DSO6ZWQE9'
+session_name = 'example-driver'
+credentials = client.get_credentials_for_role(role_name, session_name)
+client_id = credentials['client_id']
 reply_topic = f'ot/replies/{client_id}'
-temporary_credentials = client.get_credentials_for_role('open-taxi-sls-DriversRole-1S0DSO6ZWQE9', client_id)
-mqtt = client.get_client(client_id, temporary_credentials)
 
+mqtt = client.get_client(credentials)
 mqtt.connect()
 
 print('subscribing to', reply_topic)
 mqtt.subscribe(reply_topic, 1, custom_callback)
-
 time.sleep(2)
 
 start_time = datetime.now()
