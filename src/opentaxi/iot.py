@@ -21,6 +21,8 @@ def get_client():
         client.configureOfflinePublishQueueing(-1)  # Infinite offline Publish queueing
         client.configureDrainingFrequency(2)  # Draining: 2 Hz
         client.configureConnectDisconnectTimeout(10)  # 10 sec
+        client.configureOfflinePublishQueueing(0)  # No offline Publish queueing
+        client.configureConnectDisconnectTimeout(5)  # 5 sec
         client.configureMQTTOperationTimeout(5)  # 5 sec
-    client.connect()
+        client.connect()
     return client
