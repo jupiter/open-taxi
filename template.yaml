@@ -3,6 +3,9 @@ Transform: "AWS::Serverless-2016-10-31"
 Parameters:
   IOTHostName:
     Type: String
+  ScriptsPrincipalArn:
+    Description: References the user, group, role etc. that can assume driver/rider roles
+    Type: String
 
 Resources:
   DriversRole:
@@ -15,7 +18,13 @@ Resources:
             Effect: Allow
             Principal:
               AWS:
-                - !Ref AWS::AccountId
+                - !Ref ScriptsPrincipalArn
+            Action:
+              sts:AssumeRole
+          - Effect: Allow
+            Principal:
+              AWS:
+                - !GetAtt AuthApiFunctionsRole.Arn
             Action:
               sts:AssumeRole
       Path: /
@@ -48,10 +57,16 @@ Resources:
         Version: 2012-10-17
         Statement:
           -
-            Effect: "Allow"
+            Effect: Allow
             Principal:
               AWS:
-                - !Ref AWS::AccountId
+                - !Ref ScriptsPrincipalArn
+            Action:
+              sts:AssumeRole
+          - Effect: Allow
+            Principal:
+              AWS:
+                - !GetAtt AuthApiFunctionsRole.Arn
             Action:
               sts:AssumeRole
       Path: /
@@ -165,6 +180,7 @@ Resources:
       Roles:
         - !Ref PublishDriversAvailableRole
         - !Ref PublishRidersSearchingRole
+        - !Ref AuthApiFunctionsRole
 
   PublishDriversAvailableFn:
     Type: AWS::Serverless::Function
@@ -174,6 +190,7 @@ Resources:
       Handler: drivers_available.handler
       Runtime: python3.6
       Role: !GetAtt PublishDriversAvailableRole.Arn
+      Timeout: 6
       Environment:
         Variables:
           OT_IOT_HOST: !Ref IOTHostName
@@ -186,6 +203,7 @@ Resources:
       Handler: riders_searching.handler
       Runtime: python3.6
       Role: !GetAtt PublishRidersSearchingRole.Arn
+      Timeout: 6
       Environment:
         Variables:
           OT_IOT_HOST: !Ref IOTHostName
@@ -235,6 +253,107 @@ Resources:
       Principal: iot.amazonaws.com
       SourceAccount: !Ref AWS::AccountId
       SourceArn: !GetAtt RidersSearchingRule.Arn
+
+  RegistrationsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+        -
+          AttributeName: reg_id
+          AttributeType: S
+      KeySchema:
+        -
+          AttributeName: reg_id
+          KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: 2
+        WriteCapacityUnits: 2
+      TableName: OTRegistrations
+      TimeToLiveSpecification:
+        AttributeName: expires_epoch
+        Enabled: true
+
+  AuthApiFunctionsRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          -
+            Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              sts:AssumeRole
+      Path: /
+      Policies:
+        -
+          PolicyName: OTAuthApiFunctionsPolicy
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              -
+                Effect: Allow
+                Action:
+                  - dynamodb:GetItem
+                  - dynamodb:PutItem
+                  - dynamodb:UpdateItem
+                Resource:
+                  - !GetAtt RegistrationsTable.Arn
+              -
+                Effect: Deny
+                Action: sns:Publish
+                Resource: 'arn:aws:sns:*:*:*'
+              -
+                Effect: Allow
+                Action: sns:Publish
+                Resource: '*'
+
+  ApiRegisterFn:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: build/
+      FunctionName: "OTApiRegister"
+      Handler: api_register.handler
+      Runtime: python3.6
+      Role: !GetAtt AuthApiFunctionsRole.Arn
+      Timeout: 6
+      Environment:
+        Variables:
+          REGS_TABLE_NAME: !Ref RegistrationsTable
+          DRIVERS_ROLE_ARN: !GetAtt DriversRole.Arn
+          RIDERS_ROLE_ARN: !GetAtt RidersRole.Arn
+      Events:
+        PostRegistration:
+          Type: Api
+          Properties:
+            Path: /registrations
+            Method: post
+
+  ApiCredentialsFn:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: build/
+      FunctionName: "OTApiCredentials"
+      Handler: api_credentials.handler
+      Runtime: python3.6
+      Role: !GetAtt AuthApiFunctionsRole.Arn
+      Timeout: 6
+      Environment:
+        Variables:
+          REGS_TABLE_NAME: !Ref RegistrationsTable
+          DRIVERS_ROLE_ID: !GetAtt DriversRole.RoleId
+          DRIVERS_ROLE_ARN: !GetAtt DriversRole.Arn
+          RIDERS_ROLE_ID: !GetAtt RidersRole.RoleId
+          RIDERS_ROLE_ARN: !GetAtt RidersRole.Arn
+      Events:
+        GetRegistrationCredentials:
+          Type: Api
+          Properties:
+            Path: /registrations/{reg_id}/credentials
+            Method: put
+
 
 Outputs:
   DriversRoleArn:

@@ -1,0 +1,45 @@
+{
+  "type": "object",
+  "properties": {
+    "body": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "queryStringParameters": {
+      "oneOf": [
+        {
+          "type": "object",
+          "patternProperties": {
+            ".+": {
+              "type": "string"
+            }
+          }
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "pathParameters": {
+      "oneOf": [
+        {
+          "type": "object",
+          "patternProperties": {
+            ".+": {
+              "type": "string"
+            }
+          }
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  }
+}

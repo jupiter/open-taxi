@@ -1,22 +1,27 @@
 import json
-from jsonschema import Draft3Validator
+from jsonschema import Draft4Validator
 
 
 def get_validator(schema_file_path):
     with open(schema_file_path, "r") as read_file:
         schema = json.load(read_file)
-        if schema['properties'].get('reply_topic', False):
+        if schema.get('properties', {}).get('reply_topic', False):
             schema['properties']['auth_client_id'] = {
                 'type': 'string',
                 'required': True
             } # Must be provided by rule's SQL statement
-    return Draft3Validator(schema)
+    return Draft4Validator(schema)
 
 
-def is_valid_message(validator, message):
+def validate(validator, message):
     invalid = []
     for error in validator.iter_errors(message):
         invalid.append(error.message)
+    return invalid
+
+
+def is_valid_message(validator, message):
+    invalid = validate(validator, message)
 
     if len(invalid) > 0:
         print(json.dumps(message, sort_keys=True, indent=2))
